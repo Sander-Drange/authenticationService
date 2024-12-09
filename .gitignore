@@ -41,9 +41,9 @@ src/main/resources/.env
 .env.local
 
 # Application Properties (Optional - add if they contain sensitive information)
-# application.properties
+src/main/resources/application.yml
 application.yml
-application-dev.properties
+application-dev.yml
 
 # Log Files
 *.log

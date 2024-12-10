@@ -1,30 +1,42 @@
 package com.example.authentication_service.config;
 
 import org.springframework.amqp.core.*;
-import org.springframework.context.annotation.*;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitMQConfig {
-
-    public static final String USER_QUEUE = "user.queue";
-    public static final String USER_EXCHANGE = "user.exchange";
-    public static final String USER_ROUTING_KEY = "user.routingkey";
-
     @Bean
-    public Queue queue() {
-        return new Queue(USER_QUEUE);
+    public Queue userQueue() {
+        return new Queue("user.queue", true);
     }
 
     @Bean
-    public TopicExchange exchange() {
-        return new TopicExchange(USER_EXCHANGE);
+    public TopicExchange userExchange() {
+        return new TopicExchange("user.exchange");
     }
 
     @Bean
-    public Binding binding(Queue queue, TopicExchange exchange) {
+    public Binding userBinding(Queue userQueue, TopicExchange userExchange) {
         return BindingBuilder
-                .bind(queue)
-                .to(exchange)
-                .with(USER_ROUTING_KEY);
+                .bind(userQueue)
+                .to(userExchange)
+                .with("user.registration");
+    }
+
+    @Bean
+    public MessageConverter messageConverter() {
+        return new Jackson2JsonMessageConverter();
+    }
+
+    @Bean
+    public AmqpTemplate amqpTemplate(ConnectionFactory connectionFactory) {
+        RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+        rabbitTemplate.setMessageConverter(messageConverter());
+        return rabbitTemplate;
     }
 }

@@ -1,9 +1,9 @@
 package com.example.authentication_service.service;
 
 import com.example.authentication_service.config.JwtService;
-import com.example.authentication_service.dto.AuthenticationRequest;
-import com.example.authentication_service.dto.AuthenticationResponse;
-import com.example.authentication_service.dto.RegisterRequest;
+import com.example.authentication_service.dto.request.AuthenticationRequest;
+import com.example.authentication_service.dto.response.AuthenticationResponse;
+import com.example.authentication_service.dto.request.RegisterRequest;
 import com.example.authentication_service.dto.events.UserRegisteredEvent;
 import com.example.authentication_service.entity.Role;
 import com.example.authentication_service.entity.User;
@@ -16,9 +16,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthenticationService {
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
@@ -34,27 +34,22 @@ public class AuthenticationService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.USER)
                 .build();
-        
+
         var savedUser = repository.save(user);
-        var jwtToken = jwtService.generateToken(user);
+        var jwtToken = jwtService.generateToken(savedUser.getId()); // Pass userId here
 
         UserRegisteredEvent event = new UserRegisteredEvent(
                 savedUser.getId().toString(),
                 savedUser.getEmail(),
                 savedUser.getFirstname(),
                 savedUser.getLastname()
-                );
-        rabbitTemplate.convertAndSend(
-          "user.exchange",
-          "user.registration",
-                event
         );
+        rabbitTemplate.convertAndSend("user.exchange", "user.registration", event);
         log.info("User registration event published successfully");
-        
+
         return AuthenticationResponse.builder()
                 .token(jwtToken)
                 .build();
-        
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
@@ -64,12 +59,15 @@ public class AuthenticationService {
                         request.getPassword()
                 )
         );
+
         var user = repository.findByEmail(request.getEmail())
                 .orElseThrow();
-        var jwtToken = jwtService.generateToken(user);
+
+        var jwtToken = jwtService.generateToken(user.getId()); // Use user.getId() here
 
         return AuthenticationResponse.builder()
                 .token(jwtToken)
                 .build();
     }
 }
+

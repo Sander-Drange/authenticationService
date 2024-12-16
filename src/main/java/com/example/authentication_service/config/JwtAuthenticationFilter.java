@@ -19,7 +19,7 @@ import java.io.IOException;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtService jwtService;  // Injecting JwtService properly
+    private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
     @Override
@@ -30,37 +30,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
-        final String userEmail;
 
-        // Check if Authorization header is valid
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // Extract the token from the header
         jwt = authHeader.substring(7);
 
-        // Extract the username/email from the token
-        userEmail = jwtService.extractUsername(jwt);
+        // Now we extract userId instead of username
+        final String userId = jwtService.extractUserId(jwt);
 
-        // Validate the token and set the authentication context
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
+        if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(userId);
+            // Make sure UserDetailsService can load by userId.
+            // This means userDetailsService.loadUserByUsername() should find user by ID.
+
             if (jwtService.isTokenValid(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
+                authToken.setDetails(
+                        new org.springframework.security.web.authentication.WebAuthenticationDetailsSource().buildDetails(request)
                 );
-
-                // Set the authentication details for the current request
-                authToken.setDetails(new org.springframework.security.web.authentication.WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
 
-        // Continue with the filter chain
         filterChain.doFilter(request, response);
     }
 }

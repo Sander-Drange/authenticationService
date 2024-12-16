@@ -32,11 +32,13 @@ public class AuthenticationService {
                 .lastname(request.getLastName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(Role.USER)
+                .role(Role.USER) // Default role
                 .build();
 
         var savedUser = repository.save(user);
-        var jwtToken = jwtService.generateToken(savedUser.getId()); // Pass userId here
+
+        // Generate token with role
+        var jwtToken = jwtService.generateToken(savedUser.getId(), savedUser.getRole().name());
 
         UserRegisteredEvent event = new UserRegisteredEvent(
                 savedUser.getId().toString(),
@@ -63,11 +65,11 @@ public class AuthenticationService {
         var user = repository.findByEmail(request.getEmail())
                 .orElseThrow();
 
-        var jwtToken = jwtService.generateToken(user.getId()); // Use user.getId() here
+        // Generate token with role
+        var jwtToken = jwtService.generateToken(user.getId(), user.getRole().name());
 
         return AuthenticationResponse.builder()
                 .token(jwtToken)
                 .build();
     }
 }
-
